@@ -22,35 +22,36 @@ class RegRelSolver:
         self.lam = lam
 
         self.mask = self._get_mask()
-        self._identity = np.identity(self.n)
         self.result = None
+        self.m = self.mask.sum()
+        self._identity = np.identity(self.n)
 
     def _get_mask(self) -> NDArray:
-        return self.inv_k0 != 0.0 | self.inv_kt != 0.0
+        return (self.inv_k0 != 0.0) | (self.inv_kt != 0.0)
 
-    def _a_slim_to_a_full(self, a_slim: NDArray) -> NDArray:
-        a_full = np.zeros((self.n, self.n))
-        a_full[self.mask] = a_slim
-        return a_full
+    def _slim_to_full(self, slim: NDArray) -> NDArray:
+        full = np.zeros((self.n, self.n), dtype=slim.dtype)
+        full[self.mask] = slim
+        return full
 
-    def _a_full_to_a_slim(self, a_full: NDArray) -> NDArray:
-        a_slim = a_full[self.mask]
-        return a_slim
+    def _full_to_slim(self, full: NDArray) -> NDArray:
+        slim = full[self.mask]
+        return slim
 
     # optimization interfaces
     def objective(self, a_slim: NDArray) -> float:
-        a_full = self._a_slim_to_a_full(a_slim)
+        a_full = self._slim_to_full(a_slim)
         exp_at = self._identity + a_full
         residual = exp_at.T.dot(self.inv_kt).dot(exp_at) - self.inv_k0
 
-        return 0.5 * (residual**2).sum() + 0.5 * (a_slim**2).sum()
+        return 0.5 * (residual**2).sum() + 0.5 * self.lam * (a_slim**2).sum()
 
     def gradient(self, a_slim: NDArray) -> NDArray:
-        a_full = self._a_slim_to_a_full(a_slim)
+        a_full = self._slim_to_full(a_slim)
         exp_at = self._identity + a_full
         residual = exp_at.T.dot(self.inv_kt).dot(exp_at) - self.inv_k0
 
-        grad = self._a_full_to_a_slim(2.0 * exp_at.T.dot(self.inv_kt).dot(residual))
+        grad = self._full_to_slim(2.0 * exp_at.T.dot(self.inv_kt).dot(residual))
         grad += self.lam * a_slim
 
         return grad
@@ -59,7 +60,7 @@ class RegRelSolver:
         self, a_slim_0: NDArray | None = None, options: dict | None = None
     ) -> NDArray:
         if a_slim_0 is None:
-            a_slim_0 = np.zeros(self.mask.sum())
+            a_slim_0 = np.zeros(self.m)
         self.result = minimize(
             fun=self.objective,
             x0=a_slim_0,
@@ -68,9 +69,9 @@ class RegRelSolver:
             options=options,
         )
 
-        if not self.result.sccuess:
-            warn("solver failed to converge")
+        if not self.result.success:
+            warn(f"solver failed to converge, with status={self.result.status}")
 
         a_slim_opt = self.result.x
-        a_full_opt = self._a_slim_to_a_full(a_slim_opt)
+        a_full_opt = self._slim_to_full(a_slim_opt)
         return a_full_opt
