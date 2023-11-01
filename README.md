@@ -5,7 +5,7 @@ Gene regulatory network inference with covariance dynamics
 
 You can install this package through pip
 ```bash
-pip install git+git://github.com/zhengp0/genet.git
+pip install git+https://github.com/zhengp0/genet.git
 ```
 
 ## Example
