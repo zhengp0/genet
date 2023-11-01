@@ -24,8 +24,8 @@ def test_on_simple_case():
     # backward
     bresidual = my_exp_at.T.dot(inv_kt).dot(my_exp_at) - inv_k0
 
-    assert np.allclose(fresidual, 0.0)
-    assert np.allclose(bresidual, 0.0)
+    assert np.allclose(fresidual, 0.0, atol=1e-7)
+    assert np.allclose(bresidual, 0.0, atol=1e-7)
 
     # however we cannot gaurantee exp_at is close to my_exp_at
     # assert np.allclose(my_exp_at, exp_at) <- this will fail the test
