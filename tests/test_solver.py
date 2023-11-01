@@ -8,9 +8,8 @@ def setup() -> tuple[NDArray, NDArray, float]:
     n = 5
     inv_kt = np.identity(n)
     inv_k0 = np.identity(n)
-    lam = 0.0
 
-    return inv_k0, inv_kt, lam
+    return inv_k0, inv_kt
 
 
 def ad_gradient(objective: Callable, x: NDArray, eps: float = 1e-16) -> NDArray:
@@ -26,8 +25,8 @@ def ad_gradient(objective: Callable, x: NDArray, eps: float = 1e-16) -> NDArray:
 
 
 def test_gradient():
-    inv_k0, inv_kt, lam = setup()
-    solver = RegRelSolver(inv_k0, inv_kt, lam)
+    inv_k0, inv_kt = setup()
+    solver = RegRelSolver(inv_k0, inv_kt)
 
     x = np.arange(solver.m, dtype=float)
     my_grad = solver.gradient(x)
@@ -37,8 +36,8 @@ def test_gradient():
 
 
 def test_fit():
-    inv_k0, inv_kt, lam = setup()
-    solver = RegRelSolver(inv_k0, inv_kt, lam)
+    inv_k0, inv_kt = setup()
+    solver = RegRelSolver(inv_k0, inv_kt)
 
     my_solution = solver.fit()
     tr_solution = np.zeros((solver.n, solver.n))

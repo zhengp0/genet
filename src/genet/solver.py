@@ -7,7 +7,7 @@ from warnings import warn
 class RegRelSolver:
     """Gene Regulartory Relation Solver."""
 
-    def __init__(self, inv_k0: NDArray, inv_kt: NDArray, lam: float) -> None:
+    def __init__(self, inv_k0: NDArray, inv_kt: NDArray, lam: float = 0.0) -> None:
         n = inv_k0.shape[0]
         if inv_k0.shape != (n, n):
             raise ValueError("`inv_k0` shape doesn't match")
