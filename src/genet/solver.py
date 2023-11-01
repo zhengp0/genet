@@ -27,7 +27,7 @@ class RegRelSolver:
         self._identity = np.identity(self.n)
 
     def _get_mask(self) -> NDArray:
-        return (self.inv_k0 != 0.0) | (self.inv_kt != 0.0)
+        return (~np.isclose(self.inv_k0, 0.0)) | (~np.isclose(self.inv_kt, 0.0))
 
     def _slim_to_full(self, slim: NDArray) -> NDArray:
         full = np.zeros((self.n, self.n), dtype=slim.dtype)
@@ -57,10 +57,11 @@ class RegRelSolver:
         return grad
 
     def fit(
-        self, at_slim_0: NDArray | None = None, options: dict | None = None
+        self, at_full_0: NDArray | None = None, options: dict | None = None
     ) -> NDArray:
-        if at_slim_0 is None:
-            at_slim_0 = np.zeros(self.m)
+        if at_full_0 is None:
+            at_full_0 = np.zeros((self.n, self.n))
+        at_slim_0 = self._full_to_slim(at_full_0)
         self.result = minimize(
             fun=self.objective,
             x0=at_slim_0,
