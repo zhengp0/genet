@@ -39,31 +39,31 @@ class RegRelSolver:
         return slim
 
     # optimization interfaces
-    def objective(self, a_slim: NDArray) -> float:
-        a_full = self._slim_to_full(a_slim)
-        exp_at = self._identity + a_full
+    def objective(self, at_slim: NDArray) -> float:
+        at_full = self._slim_to_full(at_slim)
+        exp_at = self._identity + at_full
         residual = exp_at.T.dot(self.inv_kt).dot(exp_at) - self.inv_k0
 
-        return 0.5 * (residual**2).sum() + 0.5 * self.lam * (a_slim**2).sum()
+        return 0.5 * (residual**2).sum() + 0.5 * self.lam * (at_slim**2).sum()
 
-    def gradient(self, a_slim: NDArray) -> NDArray:
-        a_full = self._slim_to_full(a_slim)
-        exp_at = self._identity + a_full
+    def gradient(self, at_slim: NDArray) -> NDArray:
+        at_full = self._slim_to_full(at_slim)
+        exp_at = self._identity + at_full
         residual = exp_at.T.dot(self.inv_kt).dot(exp_at) - self.inv_k0
 
         grad = self._full_to_slim(2.0 * exp_at.T.dot(self.inv_kt).dot(residual))
-        grad += self.lam * a_slim
+        grad += self.lam * at_slim
 
         return grad
 
     def fit(
-        self, a_slim_0: NDArray | None = None, options: dict | None = None
+        self, at_slim_0: NDArray | None = None, options: dict | None = None
     ) -> NDArray:
-        if a_slim_0 is None:
-            a_slim_0 = np.zeros(self.m)
+        if at_slim_0 is None:
+            at_slim_0 = np.zeros(self.m)
         self.result = minimize(
             fun=self.objective,
-            x0=a_slim_0,
+            x0=at_slim_0,
             method="BFGS",
             jac=self.gradient,
             options=options,
@@ -72,6 +72,6 @@ class RegRelSolver:
         if not self.result.success:
             warn(f"solver failed to converge, with status={self.result.status}")
 
-        a_slim_opt = self.result.x
-        a_full_opt = self._slim_to_full(a_slim_opt)
-        return a_full_opt
+        at_slim_opt = self.result.x
+        at_full_opt = self._slim_to_full(at_slim_opt)
+        return at_full_opt
