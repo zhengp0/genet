@@ -13,7 +13,7 @@ authors = [
     { name = "Peng Zheng", email = "zhengp@uw.edu" },
 ]
 dependencies = [
-    "numpy==1.26.1",
+    "numpy<=1.24",
     "scipy==1.11.3",
 ]
 
