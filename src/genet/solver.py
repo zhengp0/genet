@@ -7,7 +7,13 @@ from warnings import warn
 class RegRelSolver:
     """Gene Regulartory Relation Solver."""
 
-    def __init__(self, k0: NDArray, kt: NDArray, lam: float = 0.0) -> None:
+    def __init__(
+        self,
+        k0: NDArray,
+        kt: NDArray,
+        lam: float = 0.0,
+        weight: NDArray | None = None,
+    ) -> None:
         k0 = np.asarray(k0)
         kt = np.asarray(kt)
         lam = float(lam)
@@ -20,12 +26,22 @@ class RegRelSolver:
         if lam < 0:
             raise ValueError("`lam` must be positive")
 
+        if weight is None:
+            weight = np.ones((n, n))
+        weight = np.asarray(weight)
+
+        if weight.shape != (n, n):
+            raise ValueError("`weight` shape doesn't match")
+        if (weight < 0).any() or (weight > 1).any():
+            raise ValueError("`weight` elements have to between 0 or 1")
+
         self.n = n
         self.k0 = k0
         self.kt = kt
         self.inv_k0 = np.linalg.inv(k0)
         self.inv_kt = np.linalg.inv(kt)
         self.lam = lam
+        self.weight = weight
 
         self.mask = self._get_mask()
         self.result = None
@@ -50,14 +66,19 @@ class RegRelSolver:
         exp_at = self._identity + at_full
         residual = self.kt - exp_at.dot(self.k0).dot(exp_at.T)
 
-        return 0.5 * (residual**2).sum() + 0.5 * self.lam * (at_slim**2).sum()
+        return (
+            0.5 * (self.weight * residual**2).sum()
+            + 0.5 * self.lam * (at_slim**2).sum()
+        )
 
     def gradient(self, at_slim: NDArray) -> NDArray:
         at_full = self._slim_to_full(at_slim)
         exp_at = self._identity + at_full
         residual = self.kt - exp_at.dot(self.k0).dot(exp_at.T)
 
-        grad = -self._full_to_slim(2.0 * exp_at.dot(self.k0).dot(residual))
+        grad = self._full_to_slim(
+            2.0 * self.weight * exp_at.dot(self.k0).dot(-residual)
+        )
         grad += self.lam * at_slim
 
         return grad
