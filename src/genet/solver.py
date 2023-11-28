@@ -7,19 +7,41 @@ from warnings import warn
 class RegRelSolver:
     """Gene Regulartory Relation Solver."""
 
-    def __init__(self, inv_k0: NDArray, inv_kt: NDArray, lam: float = 0.0) -> None:
-        n = inv_k0.shape[0]
-        if inv_k0.shape != (n, n):
-            raise ValueError("`inv_k0` shape doesn't match")
-        if inv_kt.shape != (n, n):
-            raise ValueError("`inv_kt` shape doesn't match")
+    def __init__(
+        self,
+        k0: NDArray,
+        kt: NDArray,
+        lam: float = 0.0,
+        weight: NDArray | None = None,
+    ) -> None:
+        k0 = np.asarray(k0)
+        kt = np.asarray(kt)
+        lam = float(lam)
+
+        n = k0.shape[0]
+        if k0.shape != (n, n):
+            raise ValueError("`k0` shape doesn't match")
+        if kt.shape != (n, n):
+            raise ValueError("`kt` shape doesn't match")
         if lam < 0:
             raise ValueError("`lam` must be positive")
 
+        if weight is None:
+            weight = np.ones((n, n))
+        weight = np.asarray(weight)
+
+        if weight.shape != (n, n):
+            raise ValueError("`weight` shape doesn't match")
+        if (weight < 0).any() or (weight > 1).any():
+            raise ValueError("`weight` elements have to between 0 or 1")
+
         self.n = n
-        self.inv_k0 = inv_k0
-        self.inv_kt = inv_kt
+        self.k0 = k0
+        self.kt = kt
+        self.inv_k0 = np.linalg.inv(k0)
+        self.inv_kt = np.linalg.inv(kt)
         self.lam = lam
+        self.weight = weight
 
         self.mask = self._get_mask()
         self.result = None
@@ -42,16 +64,21 @@ class RegRelSolver:
     def objective(self, at_slim: NDArray) -> float:
         at_full = self._slim_to_full(at_slim)
         exp_at = self._identity + at_full
-        residual = exp_at.T.dot(self.inv_kt).dot(exp_at) - self.inv_k0
+        residual = self.kt - exp_at.dot(self.k0).dot(exp_at.T)
 
-        return 0.5 * (residual**2).sum() + 0.5 * self.lam * (at_slim**2).sum()
+        return (
+            0.5 * (self.weight * residual**2).sum()
+            + 0.5 * self.lam * (at_slim**2).sum()
+        )
 
     def gradient(self, at_slim: NDArray) -> NDArray:
         at_full = self._slim_to_full(at_slim)
         exp_at = self._identity + at_full
-        residual = exp_at.T.dot(self.inv_kt).dot(exp_at) - self.inv_k0
+        residual = self.kt - exp_at.dot(self.k0).dot(exp_at.T)
 
-        grad = self._full_to_slim(2.0 * exp_at.T.dot(self.inv_kt).dot(residual))
+        grad = self._full_to_slim(
+            2.0 * self.weight * exp_at.dot(self.k0).dot(-residual)
+        )
         grad += self.lam * at_slim
 
         return grad

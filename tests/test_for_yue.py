@@ -15,7 +15,7 @@ def test_on_simple_case():
     inv_k0 = np.linalg.inv(k0)
     inv_kt = np.linalg.inv(kt)
 
-    solver = RegRelSolver(inv_k0, inv_kt)
+    solver = RegRelSolver(k0, kt)
     my_at = solver.fit()
     my_exp_at = np.identity(n) + my_at
 
