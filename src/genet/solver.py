@@ -48,12 +48,27 @@ class RegRelSolver:
         self.weight = weight
 
         self.mask = self._get_mask()
+        self.mask_index = np.argwhere(self.mask)
         self.result = None
         self.m = self.mask.sum()
         self._identity = np.identity(self.n)
 
+        self.mask_index_to_selection_weight_index, self.selection_weight = (
+            self._get_selection_weight()
+        )
+
     def _get_mask(self) -> NDArray:
         return (~np.isclose(self.inv_k0, 0.0)) | (~np.isclose(self.inv_kt, 0.0))
+
+    def _get_selection_weight(self) -> NDArray:
+        mask_index_to_selection_weight_index, p = {}, 0
+        for i, j in self.mask_index:
+            if i < j:
+                mask_index_to_selection_weight_index[(i, j)] = p
+                p += 1
+
+        size = len(mask_index_to_selection_weight_index)
+        return mask_index_to_selection_weight_index, np.repeat(0.5, size)
 
     def _slim_to_full(self, slim: NDArray) -> NDArray:
         full = np.zeros((self.n, self.n), dtype=slim.dtype)
@@ -64,8 +79,24 @@ class RegRelSolver:
         slim = full[self.mask]
         return slim
 
+    def _selection_weight_to_slim(self, selection_weight: NDArray) -> NDArray:
+        slim = np.zeros(self.m)
+        for k, (i, j) in enumerate(self.mask_index):
+            if i < j:
+                slim[k] = selection_weight[
+                    self.mask_index_to_selection_weight_index[(i, j)]
+                ]
+            elif i > j:
+                slim[k] = (
+                    1.0
+                    - selection_weight[
+                        self.mask_index_to_selection_weight_index[(j, i)]
+                    ]
+                )
+        return slim
+
     # optimization interfaces
-    def objective(self, at_slim: NDArray) -> float:
+    def objective_smooth(self, at_slim: NDArray) -> float:
         at_full = self._slim_to_full(at_slim)
         exp_at = self._identity + at_full
         residual = self.kt - exp_at.T.dot(self.k0).dot(exp_at)
@@ -75,7 +106,7 @@ class RegRelSolver:
             + 0.5 * self.lam * (at_slim**2).sum()
         )
 
-    def gradient(self, at_slim: NDArray) -> NDArray:
+    def gradient_smooth(self, at_slim: NDArray) -> NDArray:
         at_full = self._slim_to_full(at_slim)
         exp_at = self._identity + at_full
         residual = self.kt - exp_at.T.dot(self.k0).dot(exp_at)
@@ -87,6 +118,13 @@ class RegRelSolver:
 
         return grad
 
+    def objective(self, at_slim: NDArray) -> float:
+        objective_smooth = self.objective_smooth(at_slim)
+        selection_penalty = (
+            self._selection_weight_to_slim(self.selection_weight).dot(np.abs(at_slim))
+        ).sum()
+        return objective_smooth + self.eta * selection_penalty
+
     def fit(
         self, at_full_0: NDArray | None = None, options: dict | None = None
     ) -> NDArray:
@@ -96,10 +134,10 @@ class RegRelSolver:
 
         if self.eta == 0.0:
             self.result = minimize(
-                fun=self.objective,
+                fun=self.objective_smooth,
                 x0=at_slim_0,
                 method="BFGS",
-                jac=self.gradient,
+                jac=self.gradient_smooth,
                 options=options,
             )
         else:
