@@ -12,6 +12,7 @@ class RegRelSolver:
         k0: NDArray,
         kt: NDArray,
         lam: float = 0.0,
+        eta: float = 0.0,
         weight: NDArray | None = None,
     ) -> None:
         k0 = np.asarray(k0)
@@ -25,6 +26,8 @@ class RegRelSolver:
             raise ValueError("`kt` shape doesn't match")
         if lam < 0:
             raise ValueError("`lam` must be positive")
+        if eta < 0:
+            raise ValueError("`eta` must be positive")
 
         if weight is None:
             weight = np.ones((n, n))
@@ -41,6 +44,7 @@ class RegRelSolver:
         self.inv_k0 = np.linalg.inv(k0)
         self.inv_kt = np.linalg.inv(kt)
         self.lam = lam
+        self.eta = eta
         self.weight = weight
 
         self.mask = self._get_mask()
@@ -89,13 +93,17 @@ class RegRelSolver:
         if at_full_0 is None:
             at_full_0 = np.zeros((self.n, self.n))
         at_slim_0 = self._full_to_slim(at_full_0)
-        self.result = minimize(
-            fun=self.objective,
-            x0=at_slim_0,
-            method="BFGS",
-            jac=self.gradient,
-            options=options,
-        )
+
+        if self.eta == 0.0:
+            self.result = minimize(
+                fun=self.objective,
+                x0=at_slim_0,
+                method="BFGS",
+                jac=self.gradient,
+                options=options,
+            )
+        else:
+            raise NotImplementedError("Directional prior is not implemented yet.")
 
         if not self.result.success:
             warn(f"solver failed to converge, with status={self.result.status}")

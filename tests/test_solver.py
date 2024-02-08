@@ -13,7 +13,7 @@ def setup() -> tuple[NDArray, NDArray, float, NDArray]:
     for i in range(n):
         weight[i, i] = 0.0
 
-    return k0, kt, lam, weight
+    return dict(k0=k0, kt=kt, lam=lam, weight=weight)
 
 
 def ad_gradient(objective: Callable, x: NDArray, eps: float = 1e-16) -> NDArray:
@@ -29,7 +29,7 @@ def ad_gradient(objective: Callable, x: NDArray, eps: float = 1e-16) -> NDArray:
 
 
 def test_gradient():
-    solver = RegRelSolver(*setup())
+    solver = RegRelSolver(**setup())
 
     x = np.arange(solver.m, dtype=float)
     my_grad = solver.gradient(x)
@@ -39,7 +39,7 @@ def test_gradient():
 
 
 def test_fit():
-    solver = RegRelSolver(*setup())
+    solver = RegRelSolver(**setup())
 
     my_solution = solver.fit()
     tr_solution = np.zeros((solver.n, solver.n))
