@@ -64,7 +64,7 @@ class RegRelSolver:
     def objective(self, at_slim: NDArray) -> float:
         at_full = self._slim_to_full(at_slim)
         exp_at = self._identity + at_full
-        residual = self.kt - exp_at.dot(self.k0).dot(exp_at.T)
+        residual = self.kt - exp_at.T.dot(self.k0).dot(exp_at)
 
         return (
             0.5 * (self.weight * residual**2).sum()
@@ -74,10 +74,10 @@ class RegRelSolver:
     def gradient(self, at_slim: NDArray) -> NDArray:
         at_full = self._slim_to_full(at_slim)
         exp_at = self._identity + at_full
-        residual = self.kt - exp_at.dot(self.k0).dot(exp_at.T)
+        residual = self.kt - exp_at.T.dot(self.k0).dot(exp_at)
 
         grad = self._full_to_slim(
-            2.0 * self.weight * exp_at.dot(self.k0).dot(-residual)
+            2.0 * self.weight * exp_at.T.dot(self.k0).dot(-residual)
         )
         grad += self.lam * at_slim
 
