@@ -125,6 +125,32 @@ class RegRelSolver:
         ).sum()
         return objective_smooth + self.eta * selection_penalty
 
+    def gradient_selection_weight(self, at_slim: NDArray) -> NDArray:
+        grad = np.zeros_like(self.selection_weight)
+        for k, (i, j) in enumerate(self.mask_index):
+            if i < j:
+                grad[self.mask_index_to_selection_weight_index[(i, j)]] += np.abs(
+                    at_slim[k]
+                )
+            elif i > j:
+                grad[self.mask_index_to_selection_weight_index[(j, i)]] -= np.abs(
+                    at_slim[k]
+                )
+        return grad
+
+    def prox_at_slim(self, at_slim: NDArray, step: float) -> NDArray:
+        threshold = (
+            step * self.eta * self._selection_weight_to_slim(self.selection_weight)
+        )
+        return np.sign(at_slim) * np.maximum(np.abs(at_slim) - threshold, 0.0)
+
+    def prox_selection_weight(self, at_slim: NDArray, step: float) -> NDArray:
+        return np.clip(
+            self.selection_weight - step * self.gradient_selection_weight(at_slim),
+            0.0,
+            1.0,
+        )
+
     def fit(
         self, at_full_0: NDArray | None = None, options: dict | None = None
     ) -> NDArray:
