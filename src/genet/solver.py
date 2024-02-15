@@ -68,7 +68,7 @@ class RegRelSolver:
     def _get_mask(self, user_mask: NDArray | None = None) -> NDArray:
         mask = (~np.isclose(self.inv_k0, 0.0)) | (~np.isclose(self.inv_kt, 0.0))
         if user_mask is not None:
-            mask = mask & mask
+            mask = mask & user_mask
         return mask
 
     def _slim_to_full(self, slim: NDArray) -> NDArray:
