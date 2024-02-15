@@ -13,7 +13,24 @@ class RegRelSolver:
         kt: NDArray,
         lam: float = 0.0,
         weight: NDArray | None = None,
+        user_mask: NDArray | None = None,
     ) -> None:
+        """Initialize the solver.
+
+        Parameters
+        ----------
+        k0 : array_like
+            The initial covariance matrix.
+        kt : array_like
+            The covariance matrix after time t.
+        lam : float, optional
+            The l2 regularization parameter, by default 0.0.
+        weight : array_like, optional
+            The weight on matching residual, by default None.
+        user_mask : array_like, optional
+            The mask to indicate the valid elements by user, by default None.
+
+        """
         k0 = np.asarray(k0)
         kt = np.asarray(kt)
         lam = float(lam)
@@ -43,13 +60,16 @@ class RegRelSolver:
         self.lam = lam
         self.weight = weight
 
-        self.mask = self._get_mask()
+        self.mask = self._get_mask(user_mask=user_mask)
         self.result = None
         self.m = self.mask.sum()
         self._identity = np.identity(self.n)
 
-    def _get_mask(self) -> NDArray:
-        return (~np.isclose(self.inv_k0, 0.0)) | (~np.isclose(self.inv_kt, 0.0))
+    def _get_mask(self, user_mask: NDArray | None = None) -> NDArray:
+        mask = (~np.isclose(self.inv_k0, 0.0)) | (~np.isclose(self.inv_kt, 0.0))
+        if user_mask is not None:
+            mask = mask & mask
+        return mask
 
     def _slim_to_full(self, slim: NDArray) -> NDArray:
         full = np.zeros((self.n, self.n), dtype=slim.dtype)
