@@ -4,16 +4,22 @@ from numpy.typing import NDArray
 from genet.solver import RegRelSolver
 
 
-def setup() -> tuple[NDArray, NDArray, float, NDArray]:
+def setup() -> tuple[NDArray, dict]:
+    np.random.seed(0)
     n = 5
-    k0 = np.identity(n)
-    kt = np.identity(n)
-    lam = 0.0
-    weight = np.ones((n, n))
-    for i in range(n):
-        weight[i, i] = 0.0
 
-    return k0, kt, lam, weight
+    at = np.random.randn(n, n)
+    exp_at = np.identity(n) + at
+
+    k0_half = np.random.randn(n, n)
+    k0 = k0_half.T.dot(k0_half)
+
+    kt = exp_at.T.dot(k0).dot(exp_at)
+
+    lam = 0.0
+    weight = np.random.rand(n, n)
+
+    return at, dict(k0=k0, kt=kt, lam=lam, weight=weight)
 
 
 def ad_gradient(objective: Callable, x: NDArray, eps: float = 1e-16) -> NDArray:
@@ -29,7 +35,8 @@ def ad_gradient(objective: Callable, x: NDArray, eps: float = 1e-16) -> NDArray:
 
 
 def test_gradient():
-    solver = RegRelSolver(*setup())
+    _, solver_args = setup()
+    solver = RegRelSolver(**solver_args)
 
     x = np.arange(solver.m, dtype=float)
     my_grad = solver.gradient(x)
@@ -39,9 +46,9 @@ def test_gradient():
 
 
 def test_fit():
-    solver = RegRelSolver(*setup())
+    tr_solution, solver_args = setup()
+    solver = RegRelSolver(**solver_args)
 
-    my_solution = solver.fit()
-    tr_solution = np.zeros((solver.n, solver.n))
+    my_solution = solver.fit(at_full_0=tr_solution)
 
     assert np.allclose(my_solution, tr_solution)
