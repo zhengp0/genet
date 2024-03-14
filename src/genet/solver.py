@@ -96,8 +96,8 @@ class RegRelSolver:
         exp_at = self._identity + at_full
         residual = self.kt - exp_at.T.dot(self.k0).dot(exp_at)
 
-        grad = self._full_to_slim(
-            2.0 * self.weight * exp_at.T.dot(self.k0).dot(-residual)
+        grad = -self._full_to_slim(
+            self.k0.dot(exp_at).dot((self.weight + self.weight.T) * residual)
         )
         grad += self.lam * at_slim
 
